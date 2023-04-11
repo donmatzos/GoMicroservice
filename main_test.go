@@ -1,17 +1,17 @@
 package GoMicroservice //_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
-	"testing"
-
-	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"os"
 	"strconv"
+	"testing"
 )
 
 var a App
@@ -200,4 +200,54 @@ func TestDeleteProduct(t *testing.T) {
 	req, _ = http.NewRequest("GET", "/product/1", nil)
 	response = executeRequest(req)
 	checkResponseCode(t, http.StatusNotFound, response.Code)
+}
+
+func TestFindProductsByNameConcreteProduct(t *testing.T) {
+	clearTable()
+	addProducts(3)
+
+	query := url.Values{}
+	query.Set("name", "Product 1")
+	requestUrl := "/products/name?" + query.Encode()
+	req, _ := http.NewRequest("GET", requestUrl, nil)
+
+	response := executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	var products []product
+	if err := json.Unmarshal(response.Body.Bytes(), &products); err != nil {
+		t.Error("Error parsing body!")
+	}
+
+	if len(products) != 1 {
+		log.Fatalf("Expected 1 product. Received %d products.", len(products))
+	}
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+}
+
+func TestFindProductsByNameMultipleProducts(t *testing.T) {
+	clearTable()
+	addProducts(3)
+
+	query := url.Values{}
+	query.Set("name", "Product")
+	requestUrl := "/products/name?" + query.Encode()
+	req, _ := http.NewRequest("GET", requestUrl, nil)
+
+	response := executeRequest(req)
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	var products []product
+	if err := json.Unmarshal(response.Body.Bytes(), &products); err != nil {
+		t.Error("Error parsing body!")
+	}
+
+	if len(products) != 3 {
+		log.Fatalf("Expected 3 products. Received %d product(s).", len(products))
+	}
+
+	checkResponseCode(t, http.StatusOK, response.Code)
 }

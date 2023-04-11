@@ -17,61 +17,61 @@ type App struct {
 	DB     *sql.DB
 }
 
-func (a *App) Initialize(user, password, dbname string) {
+func (app *App) Initialize(user, password, dbname string) {
 	connectionString :=
 		fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", user, password, dbname)
 
 	var err error
-	a.DB, err = sql.Open("postgres", connectionString)
+	app.DB, err = sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	a.Router = mux.NewRouter()
-	a.initializeRoutes()
+	app.Router = mux.NewRouter()
+	app.initializeRoutes()
 }
 
-func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(":8010", a.Router))
+func (app *App) Run(address string) {
+	log.Fatal(http.ListenAndServe(address, app.Router))
 }
 
-func (a *App) getProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+func (app *App) getProduct(writer http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		respondWithError(writer, http.StatusBadRequest, "Invalid product ID")
 		return
 	}
 
 	p := product{ID: id}
-	if err := p.getProduct(a.DB); err != nil {
+	if err := p.getProduct(app.DB); err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			respondWithError(w, http.StatusNotFound, "Product not found")
+			respondWithError(writer, http.StatusNotFound, "Product not found")
 		default:
-			respondWithError(w, http.StatusInternalServerError, err.Error())
+			respondWithError(writer, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, p)
+	respondWithJSON(writer, http.StatusOK, p)
 }
 
-func respondWithError(w http.ResponseWriter, code int, message string) {
-	respondWithJSON(w, code, map[string]string{"error": message})
+func respondWithError(writer http.ResponseWriter, code int, message string) {
+	respondWithJSON(writer, code, map[string]string{"error": message})
 }
 
-func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+func respondWithJSON(writer http.ResponseWriter, code int, payload interface{}) {
 	response, _ := json.Marshal(payload)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(code)
+	writer.Write(response)
 }
 
-func (a *App) getProducts(w http.ResponseWriter, r *http.Request) {
-	count, _ := strconv.Atoi(r.FormValue("count"))
-	start, _ := strconv.Atoi(r.FormValue("start"))
+func (app *App) getProducts(writer http.ResponseWriter, request *http.Request) {
+	count, _ := strconv.Atoi(request.FormValue("count"))
+	start, _ := strconv.Atoi(request.FormValue("start"))
 
 	if count > 10 || count < 1 {
 		count = 10
@@ -80,78 +80,92 @@ func (a *App) getProducts(w http.ResponseWriter, r *http.Request) {
 		start = 0
 	}
 
-	products, err := getProducts(a.DB, start, count)
+	products, err := getProducts(app.DB, start, count)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+		respondWithError(writer, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, products)
+	respondWithJSON(writer, http.StatusOK, products)
 }
 
-func (a *App) createProduct(w http.ResponseWriter, r *http.Request) {
+func (app *App) createProduct(writer http.ResponseWriter, request *http.Request) {
 	var p product
-	decoder := json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(request.Body)
 	if err := decoder.Decode(&p); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		respondWithError(writer, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
-	defer r.Body.Close()
+	defer request.Body.Close()
 
-	if err := p.createProduct(a.DB); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+	if err := p.createProduct(app.DB); err != nil {
+		respondWithError(writer, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusCreated, p)
+	respondWithJSON(writer, http.StatusCreated, p)
 }
 
-func (a *App) updateProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+func (app *App) updateProduct(writer http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		respondWithError(writer, http.StatusBadRequest, "Invalid product ID")
 		return
 	}
 
 	var p product
-	decoder := json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(request.Body)
 	if err := decoder.Decode(&p); err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid resquest payload")
+		respondWithError(writer, http.StatusBadRequest, "Invalid resquest payload")
 		return
 	}
-	defer r.Body.Close()
+	defer request.Body.Close()
 	p.ID = id
 
-	if err := p.updateProduct(a.DB); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+	if err := p.updateProduct(app.DB); err != nil {
+		respondWithError(writer, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, p)
+	respondWithJSON(writer, http.StatusOK, p)
 }
 
-func (a *App) deleteProduct(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+func (app *App) deleteProduct(writer http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Invalid Product ID")
+		respondWithError(writer, http.StatusBadRequest, "Invalid Product ID")
 		return
 	}
 
 	p := product{ID: id}
-	if err := p.deleteProduct(a.DB); err != nil {
-		respondWithError(w, http.StatusInternalServerError, err.Error())
+	if err := p.deleteProduct(app.DB); err != nil {
+		respondWithError(writer, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, map[string]string{"result": "success"})
+	respondWithJSON(writer, http.StatusOK, map[string]string{"result": "success"})
 }
 
-func (a *App) initializeRoutes() {
-	a.Router.HandleFunc("/products", a.getProducts).Methods("GET")
-	a.Router.HandleFunc("/product", a.createProduct).Methods("POST")
-	a.Router.HandleFunc("/product/{id:[0-9]+}", a.getProduct).Methods("GET")
-	a.Router.HandleFunc("/product/{id:[0-9]+}", a.updateProduct).Methods("PUT")
-	a.Router.HandleFunc("/product/{id:[0-9]+}", a.deleteProduct).Methods("DELETE")
+func (app *App) getProductsByName(writer http.ResponseWriter, r *http.Request) {
+	productName := r.FormValue("name")
+
+	products, err := getProductsByName(app.DB, productName)
+	if err != nil {
+		respondWithError(writer, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(writer, http.StatusOK, products)
+}
+
+func (app *App) initializeRoutes() {
+	app.Router.HandleFunc("/products", app.getProducts).Methods("GET")
+	app.Router.HandleFunc("/product", app.createProduct).Methods("POST")
+	app.Router.HandleFunc("/product/{id:[0-9]+}", app.getProduct).Methods("GET")
+	app.Router.HandleFunc("/product/{id:[0-9]+}", app.updateProduct).Methods("PUT")
+	app.Router.HandleFunc("/product/{id:[0-9]+}", app.deleteProduct).Methods("DELETE")
+	app.Router.HandleFunc("/products/name", app.getProductsByName).Methods("GET")
+
 }
