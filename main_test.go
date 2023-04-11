@@ -251,3 +251,43 @@ func TestFindProductsByNameMultipleProducts(t *testing.T) {
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 }
+
+func TestDeleteProductByName(t *testing.T) {
+	clearTable()
+
+	var jsonStr = []byte(`{"name":"test", "price": 11.22}`)
+	req, _ := http.NewRequest("POST", "/product", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	response := executeRequest(req)
+	checkResponseCode(t, http.StatusCreated, response.Code)
+
+	req, _ = http.NewRequest("DELETE", "/product/1", nil)
+	response = executeRequest(req)
+
+	body, _ := ioutil.ReadAll(response.Body)
+	fmt.Print("\t" + string(body) + "\n")
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+
+	req, _ = http.NewRequest("GET", "/product/name?name=test", nil)
+	response = executeRequest(req)
+	checkResponseCode(t, http.StatusNotFound, response.Code)
+}
+
+func TestGetProductsTotalPrice(t *testing.T) {
+	clearTable()
+	addProducts(2)
+
+	req, _ := http.NewRequest("GET", "/product/total", nil)
+	response := executeRequest(req)
+
+	var totalPrice float64
+	json.Unmarshal(response.Body.Bytes(), &totalPrice)
+
+	if totalPrice != 30.0 {
+		log.Fatalf("Expected total price 30.0, got %f", totalPrice)
+	}
+
+	checkResponseCode(t, http.StatusOK, response.Code)
+}

@@ -93,6 +93,12 @@ func getProductsByName(db *sql.DB, productName string) ([]product, error) {
 	return products, nil
 }
 
+func deleteProductByName(db *sql.DB, productName string) error {
+	_, err := db.Exec("DELETE FROM products WHERE name=$1", productName)
+
+	return err
+}
+
 func getProductsTotalPrice(db *sql.DB) (float64, error) {
 	rows, err := db.Query("SELECT id, name, price FROM products")
 

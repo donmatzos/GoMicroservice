@@ -148,10 +148,38 @@ func (app *App) deleteProduct(writer http.ResponseWriter, request *http.Request)
 	respondWithJSON(writer, http.StatusOK, map[string]string{"result": "success"})
 }
 
-func (app *App) getProductsByName(writer http.ResponseWriter, r *http.Request) {
-	productName := r.FormValue("name")
+func (app *App) getProductsByName(writer http.ResponseWriter, request *http.Request) {
+	productName := request.FormValue("name")
 
 	products, err := getProductsByName(app.DB, productName)
+	if err != nil {
+		respondWithError(writer, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(writer, http.StatusOK, products)
+}
+
+func (app *App) deleteProductByName(writer http.ResponseWriter, request *http.Request) {
+	productName := request.FormValue("name")
+
+	err := deleteProductByName(app.DB, productName)
+	if err != nil {
+		respondWithError(writer, http.StatusBadRequest, "Invalid Product Name")
+		return
+	}
+
+	if err := deleteProductByName(app.DB, productName); err != nil {
+		respondWithError(writer, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJSON(writer, http.StatusOK, map[string]string{"result": "success"})
+}
+
+func (app *App) getProductsTotalPrice(writer http.ResponseWriter, _ *http.Request) {
+
+	products, err := getProductsTotalPrice(app.DB)
 	if err != nil {
 		respondWithError(writer, http.StatusInternalServerError, err.Error())
 		return
@@ -167,5 +195,5 @@ func (app *App) initializeRoutes() {
 	app.Router.HandleFunc("/product/{id:[0-9]+}", app.updateProduct).Methods("PUT")
 	app.Router.HandleFunc("/product/{id:[0-9]+}", app.deleteProduct).Methods("DELETE")
 	app.Router.HandleFunc("/products/name", app.getProductsByName).Methods("GET")
-
+	app.Router.HandleFunc("/product/total", app.getProductsTotalPrice).Methods("GET")
 }
