@@ -190,10 +190,11 @@ func (app *App) getProductsTotalPrice(writer http.ResponseWriter, _ *http.Reques
 
 func (app *App) initializeRoutes() {
 	app.Router.HandleFunc("/products", app.getProducts).Methods("GET")
+	app.Router.HandleFunc("/products/name", app.getProductsByName).Methods("GET")
 	app.Router.HandleFunc("/product", app.createProduct).Methods("POST")
 	app.Router.HandleFunc("/product/{id:[0-9]+}", app.getProduct).Methods("GET")
 	app.Router.HandleFunc("/product/{id:[0-9]+}", app.updateProduct).Methods("PUT")
 	app.Router.HandleFunc("/product/{id:[0-9]+}", app.deleteProduct).Methods("DELETE")
-	app.Router.HandleFunc("/products/name", app.getProductsByName).Methods("GET")
+	app.Router.HandleFunc("/product/name", app.deleteProductByName).Methods("DELETE")
 	app.Router.HandleFunc("/product/total", app.getProductsTotalPrice).Methods("GET")
 }

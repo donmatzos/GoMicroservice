@@ -14,10 +14,10 @@ import (
 	"testing"
 )
 
-var a App
+var app App
 
 func TestMain(m *testing.M) {
-	a.Initialize(
+	app.Initialize(
 		"postgres",
 		"postgres",
 		"postgres")
@@ -29,14 +29,14 @@ func TestMain(m *testing.M) {
 }
 
 func ensureTableExists() {
-	if _, err := a.DB.Exec(tableCreationQuery); err != nil {
+	if _, err := app.DB.Exec(tableCreationQuery); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func clearTable() {
-	a.DB.Exec("DELETE FROM products")
-	a.DB.Exec("ALTER SEQUENCE products_id_seq RESTART WITH 1")
+	app.DB.Exec("DELETE FROM products")
+	app.DB.Exec("ALTER SEQUENCE products_id_seq RESTART WITH 1")
 }
 
 const tableCreationQuery = `CREATE TABLE IF NOT EXISTS products
@@ -50,8 +50,8 @@ const tableCreationQuery = `CREATE TABLE IF NOT EXISTS products
 func TestEmptyTable(t *testing.T) {
 	clearTable()
 
-	req, _ := http.NewRequest("GET", "/products", nil)
-	response := executeRequest(req)
+	request, _ := http.NewRequest("GET", "/products", nil)
+	response := executeRequest(request)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
@@ -60,11 +60,11 @@ func TestEmptyTable(t *testing.T) {
 	}
 }
 
-func executeRequest(req *http.Request) *httptest.ResponseRecorder {
-	rr := httptest.NewRecorder()
-	a.Router.ServeHTTP(rr, req)
+func executeRequest(request *http.Request) *httptest.ResponseRecorder {
+	responseRecorder := httptest.NewRecorder()
+	app.Router.ServeHTTP(responseRecorder, request)
 
-	return rr
+	return responseRecorder
 }
 
 func checkResponseCode(t *testing.T, expected, actual int) {
@@ -76,8 +76,8 @@ func checkResponseCode(t *testing.T, expected, actual int) {
 func TestGetNonExistentProduct(t *testing.T) {
 	clearTable()
 
-	req, _ := http.NewRequest("GET", "/product/11", nil)
-	response := executeRequest(req)
+	request, _ := http.NewRequest("GET", "/product/11", nil)
+	response := executeRequest(request)
 
 	checkResponseCode(t, http.StatusNotFound, response.Code)
 
@@ -93,10 +93,10 @@ func TestCreateProduct(t *testing.T) {
 	clearTable()
 
 	var jsonStr = []byte(`{"name":"test product", "price": 11.22}`)
-	req, _ := http.NewRequest("POST", "/product", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
+	request, _ := http.NewRequest("POST", "/product", bytes.NewBuffer(jsonStr))
+	request.Header.Set("Content-Type", "application/json")
 
-	response := executeRequest(req)
+	response := executeRequest(request)
 	checkResponseCode(t, http.StatusCreated, response.Code)
 
 	var m map[string]interface{}
@@ -111,7 +111,7 @@ func TestCreateProduct(t *testing.T) {
 	}
 
 	// the id is compared to 1.0 because JSON unmarshaling converts numbers to
-	// floats, when the target is a map[string]interface{}
+	// floats, when the target is app map[string]interface{}
 	if m["id"] != 1.0 {
 		t.Errorf("Expected product ID to be '1'. Got '%v'", m["id"])
 	}
@@ -125,8 +125,8 @@ func TestGetProduct(t *testing.T) {
 	clearTable()
 	addProducts(1)
 
-	req, _ := http.NewRequest("GET", "/product/1", nil)
-	response := executeRequest(req)
+	request, _ := http.NewRequest("GET", "/product/1", nil)
+	response := executeRequest(request)
 
 	body, _ := ioutil.ReadAll(response.Body)
 	fmt.Print("\t" + string(body) + "\n")
@@ -140,7 +140,7 @@ func addProducts(count int) {
 	}
 
 	for i := 0; i < count; i++ {
-		a.DB.Exec("INSERT INTO products(name, price) VALUES($1, $2)", "Product "+strconv.Itoa(i), (i+1.0)*10)
+		app.DB.Exec("INSERT INTO products(name, price) VALUES($1, $2)", "Product "+strconv.Itoa(i), (i+1.0)*10)
 	}
 }
 
@@ -149,16 +149,16 @@ func TestUpdateProduct(t *testing.T) {
 	clearTable()
 	addProducts(1)
 
-	req, _ := http.NewRequest("GET", "/product/1", nil)
-	response := executeRequest(req)
+	request, _ := http.NewRequest("GET", "/product/1", nil)
+	response := executeRequest(request)
 	var originalProduct map[string]interface{}
 	json.Unmarshal(response.Body.Bytes(), &originalProduct)
 
 	var jsonStr = []byte(`{"name":"test product - updated name", "price": 11.22}`)
-	req, _ = http.NewRequest("PUT", "/product/1", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
+	request, _ = http.NewRequest("PUT", "/product/1", bytes.NewBuffer(jsonStr))
+	request.Header.Set("Content-Type", "application/json")
 
-	response = executeRequest(req)
+	response = executeRequest(request)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
@@ -185,20 +185,20 @@ func TestDeleteProduct(t *testing.T) {
 	clearTable()
 	addProducts(1)
 
-	req, _ := http.NewRequest("GET", "/product/1", nil)
-	response := executeRequest(req)
+	request, _ := http.NewRequest("GET", "/product/1", nil)
+	response := executeRequest(request)
 	checkResponseCode(t, http.StatusOK, response.Code)
 
-	req, _ = http.NewRequest("DELETE", "/product/1", nil)
-	response = executeRequest(req)
+	request, _ = http.NewRequest("DELETE", "/product/1", nil)
+	response = executeRequest(request)
 
 	body, _ := ioutil.ReadAll(response.Body)
 	fmt.Print("\t" + string(body) + "\n")
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
-	req, _ = http.NewRequest("GET", "/product/1", nil)
-	response = executeRequest(req)
+	request, _ = http.NewRequest("GET", "/product/1", nil)
+	response = executeRequest(request)
 	checkResponseCode(t, http.StatusNotFound, response.Code)
 }
 
@@ -209,9 +209,9 @@ func TestFindProductsByNameConcreteProduct(t *testing.T) {
 	query := url.Values{}
 	query.Set("name", "Product 1")
 	requestUrl := "/products/name?" + query.Encode()
-	req, _ := http.NewRequest("GET", requestUrl, nil)
+	request, _ := http.NewRequest("GET", requestUrl, nil)
 
-	response := executeRequest(req)
+	response := executeRequest(request)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
@@ -234,9 +234,9 @@ func TestFindProductsByNameMultipleProducts(t *testing.T) {
 	query := url.Values{}
 	query.Set("name", "Product")
 	requestUrl := "/products/name?" + query.Encode()
-	req, _ := http.NewRequest("GET", requestUrl, nil)
+	request, _ := http.NewRequest("GET", requestUrl, nil)
 
-	response := executeRequest(req)
+	response := executeRequest(request)
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
@@ -256,22 +256,26 @@ func TestDeleteProductByName(t *testing.T) {
 	clearTable()
 
 	var jsonStr = []byte(`{"name":"test", "price": 11.22}`)
-	req, _ := http.NewRequest("POST", "/product", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
 
-	response := executeRequest(req)
+	request, _ := http.NewRequest("POST", "/product", bytes.NewBuffer(jsonStr))
+	request.Header.Set("Content-Type", "application/json")
+
+	response := executeRequest(request)
 	checkResponseCode(t, http.StatusCreated, response.Code)
 
-	req, _ = http.NewRequest("DELETE", "/product/1", nil)
-	response = executeRequest(req)
+	query := url.Values{}
+	query.Set("name", "test")
+	requestUrl := "/product/name?" + query.Encode()
+	request, _ = http.NewRequest("DELETE", requestUrl, nil)
+	response = executeRequest(request)
 
 	body, _ := ioutil.ReadAll(response.Body)
 	fmt.Print("\t" + string(body) + "\n")
 
 	checkResponseCode(t, http.StatusOK, response.Code)
 
-	req, _ = http.NewRequest("GET", "/product/name?name=test", nil)
-	response = executeRequest(req)
+	request, _ = http.NewRequest("GET", "/product/1", nil)
+	response = executeRequest(request)
 	checkResponseCode(t, http.StatusNotFound, response.Code)
 }
 
@@ -279,8 +283,8 @@ func TestGetProductsTotalPrice(t *testing.T) {
 	clearTable()
 	addProducts(2)
 
-	req, _ := http.NewRequest("GET", "/product/total", nil)
-	response := executeRequest(req)
+	request, _ := http.NewRequest("GET", "/product/total", nil)
+	response := executeRequest(request)
 
 	var totalPrice float64
 	json.Unmarshal(response.Body.Bytes(), &totalPrice)
