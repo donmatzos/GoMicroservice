@@ -3,8 +3,8 @@ package GoMicroservice
 import "os"
 
 func main() {
-	a := App{}
-	a.Initialize(
+	app := App{}
+	app.Initialize(
 		os.Getenv("APP_DB_USERNAME"),
 		os.Getenv("APP_DB_PASSWORD"),
 		os.Getenv("APP_DB_NAME"))
@@ -14,5 +14,5 @@ func main() {
 	//export APP_DB_PASSWORD=<whatever password you use>
 	//export APP_DB_NAME=postgres
 
-	a.Run(":8010")
+	app.Run(":8010")
 }
