@@ -21,9 +21,6 @@ jobs:
       with:
         go-version: 1.19
 
-    - name: Go App
-      uses: donmatzos/GoMicroservice@v0.1
-
     - name: Build
       run: go build -v
 
