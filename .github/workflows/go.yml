@@ -10,15 +10,11 @@ on:
     branches: [ "main" ]
 
 jobs:
-  docker:
-    timeout-minutes: 10
+  build:
     runs-on: unbuntu-latest
   
     steps:
     - uses: actions/checkout@v3
-
-    - name: Start container
-      run: docker-compose -f "docker-compose.yml" up -d --build
 
     - name: Set up Go
       uses: actions/setup-go@v3
@@ -28,9 +24,14 @@ jobs:
     - name: Build
       run: go build -v
 
+    - name: Install Docker Compose
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
+
+    - name: Build and run containers
+      run: |
+        docker-compose up --d
+
     - name: Test
       run: go test -v
-      
-    - name: Stop containers
-      if: always()
-      run: docker-compose -f "docker-compose.yml" down
