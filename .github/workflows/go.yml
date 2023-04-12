@@ -31,7 +31,7 @@ jobs:
 
     - name: Build and run containers
       run: |
-        docker-compose up --d
+        docker-compose up --build --abort-on-container-exit
 
     - name: Test
       run: go test -v
