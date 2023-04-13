@@ -1,17 +1,26 @@
 # This workflow will build a golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
-name: Go
+name: Go Microservice
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
 
 jobs:
   build:
     runs-on: unbuntu-latest
+  
+    services:
+      postgres:
+      image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
   
     steps:
     - uses: actions/checkout@v3
@@ -23,15 +32,6 @@ jobs:
 
     - name: Build
       run: go build -v
-
-    - name: Install Docker Compose
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y docker-compose
-
-    - name: Build and run containers
-      run: |
-        docker-compose up --build --abort-on-container-exit
 
     - name: Test
       run: go test -v
