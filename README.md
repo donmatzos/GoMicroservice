@@ -1,3 +1,3 @@
 # Go Microservice
 
-[![](https://github.com/donmatzos/GoMicroservice/workflows/build/badge.svg)](https://github.com/donmatzos/GoMicroservice/actions)
+[![](https://github.com/donmatzos/GoMicroservice/workflows/badge.svg)](https://github.com/donmatzos/GoMicroservice/actions)
