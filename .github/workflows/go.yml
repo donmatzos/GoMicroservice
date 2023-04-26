@@ -9,6 +9,7 @@ on:
 
 jobs:
   build:
+    name: Build and Test
     runs-on: ubuntu-latest
   
     services:
@@ -34,4 +35,27 @@ jobs:
       run: |
         go build
         go test -v
-      
+        
+  sonar:
+    needs: build
+    name: Sonar Code Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          
+      - uses: actions/download-artifact@v3
+        with:
+          name: coverage-report
+          path: ${{ github.workspace }}/coverage-report
+        
+      - uses: sonarsource/sonarcloud-github-action@v1.9
+        with:
+          projectBaseDir: ${{ github.workspace }}
+          args:
+            -Dsonar.go.coverage.reportPaths=coverage-report/coverage.out
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR }}
