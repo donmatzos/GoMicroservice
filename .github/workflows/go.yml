@@ -46,16 +46,10 @@ jobs:
         with:
           fetch-depth: 0
           
-      - uses: actions/download-artifact@v3
+      - uses: sonarsource/sonarcloud-github-action@master
         with:
-          name: coverage-report
-          path: ${{ github.workspace }}/coverage-report
-        
-      - uses: sonarsource/sonarcloud-github-action@v1.9
-        with:
-          projectBaseDir: ${{ github.workspace }}
-          args:
-            -Dsonar.go.coverage.reportPaths=coverage-report/coverage.out
+          args: -X
+          
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR }}
